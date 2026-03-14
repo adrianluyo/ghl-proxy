@@ -8,25 +8,24 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Proxy all /ghl/* requests to GHL API
 app.all('/ghl/*', async (req, res) => {
-  const apiKey = req.headers['x-ghl-api-key'];
-  if (!apiKey) return res.status(401).json({ error: 'Missing API key header' });
+  const token = req.headers['x-ghl-token'];
+  if (!token) return res.status(401).json({ error: 'Missing token' });
 
-  const ghlPath = req.path.replace('/ghl/', '');
+  const path = req.path.replace('/ghl/', '');
   const query = new URLSearchParams(req.query).toString();
-  const url = `https://rest.gohighlevel.com/v1/${ghlPath}${query ? '?' + query : ''}`;
+  const url = `https://services.leadconnectorhq.com/${path}${query ? '?' + query : ''}`;
 
   try {
     const response = await fetch(url, {
       method: req.method,
       headers: {
-        'Authorization': 'Bearer ' + apiKey,
+        'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
+        'Version': '2021-07-28',
       },
       body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
     });
-
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
@@ -35,5 +34,4 @@ app.all('/ghl/*', async (req, res) => {
 });
 
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
-
-app.listen(PORT, () => console.log(`GHL proxy running on port ${PORT}`));
+app.listen(PORT, () => console.log(`GHL v2 proxy running on port ${PORT}`));
