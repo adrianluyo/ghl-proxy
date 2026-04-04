@@ -39,13 +39,33 @@ app.get('/opportunities', async (req, res) => {
   const token = req.headers['x-ghl-token'];
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
-    const data = await ghl(token, 'opportunities/search', {
-      location_id: LOCATION_ID,
-      pipeline_id: req.query.pipelineId,
-      limit: req.query.limit || 100,
-      page: req.query.page || 1,
-    });
-    res.json(data);
+    let all = [];
+    let page = 1;
+    let more = true;
+    while (more) {
+      const data = await ghl(token, 'opportunities/search', {
+        location_id: LOCATION_ID,
+        pipeline_id: req.query.pipelineId,
+        limit: 100,
+        page,
+      });
+      const opps = data.opportunities || [];
+      all = all.concat(opps);
+      more = opps.length === 100;
+      page++;
+      if (page > 20) break;
+    }
+    const { from, to } = req.query;
+    if (from || to) {
+      const fromDate = from ? new Date(from) : new Date(0);
+      const toDate = to ? new Date(to) : new Date();
+      toDate.setHours(23, 59, 59, 999);
+      all = all.filter(o => {
+        const created = new Date(o.createdAt);
+        return created >= fromDate && created <= toDate;
+      });
+    }
+    res.json({ opportunities: all, total: all.length });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
