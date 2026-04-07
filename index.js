@@ -5,10 +5,12 @@ const fetch = require('node-fetch');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const LOCATION_ID = 'k80FVNdrq5OANEsxRtKu';
+const META_AD_ACCOUNT = 'act_1818954175625818';
 
 app.use(cors());
 app.use(express.json());
 
+// --- GHL ---
 async function ghl(token, path, params) {
   const q = params ? '?' + new URLSearchParams(params).toString() : '';
   const url = `https://services.leadconnectorhq.com/${path}${q}`;
@@ -70,6 +72,34 @@ app.get('/opportunities', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// --- META ---
+app.get('/meta/campaigns', async (req, res) => {
+  const metaToken = req.headers['x-meta-token'];
+  if (!metaToken) return res.status(401).json({ error: 'Missing Meta token' });
+
+  const { from, to } = req.query;
+  const dateRange = from && to ? `{"since":"${from}","until":"${to}"}` : `{"since":"${getFirstOfMonth()}","until":"${getToday()}"}`;
+
+  try {
+    const fields = 'campaign_name,spend,impressions,clicks,actions';
+    const url = `https://graph.facebook.com/v19.0/${META_AD_ACCOUNT}/insights?fields=${fields}&time_range=${encodeURIComponent(dateRange)}&level=campaign&access_token=${metaToken}`;
+    const r = await fetch(url);
+    const body = await r.json();
+    if (body.error) throw new Error(body.error.message);
+    res.json(body);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function getToday() {
+  return new Date().toISOString().split('T')[0];
+}
+function getFirstOfMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+}
 
 app.get('/health', (_, res) => res.json({ status: 'ok', location: LOCATION_ID }));
 app.listen(PORT, () => console.log(`GHL proxy running on port ${PORT}`));
