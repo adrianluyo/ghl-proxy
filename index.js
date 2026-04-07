@@ -82,7 +82,7 @@ app.get('/meta/campaigns', async (req, res) => {
   const dateRange = from && to ? `{"since":"${from}","until":"${to}"}` : `{"since":"${getFirstOfMonth()}","until":"${getToday()}"}`;
 
   try {
-    const fields = 'campaign_name,spend,impressions,clicks,actions';
+    const fields = 'campaign_name,spend,impressions,clicks,actions,action_values';
     const url = `https://graph.facebook.com/v19.0/${META_AD_ACCOUNT}/insights?fields=${fields}&time_range=${encodeURIComponent(dateRange)}&level=campaign&access_token=${metaToken}`;
     const r = await fetch(url);
     const body = await r.json();
